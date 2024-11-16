@@ -17,7 +17,6 @@ include_directories(src)
 
 # Add source files
 file(GLOB_RECURSE SOURCES "src/*.c")
-
 # Define the executable
 add_executable(pl ${SOURCES})
 
