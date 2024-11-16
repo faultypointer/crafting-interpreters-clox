@@ -3,17 +3,24 @@
 
 #include "common.h"
 #include "memory.h"
+#include "value.h"
 
-typedef enum { RETURN } OpCode;
+typedef enum {
+  RETURN,
+  CONSTANT,
+} OpCode;
 
 typedef struct {
   int count;
   int cap;
   uint8_t *code;
+  int *lines;
+  ValueArray constants;
 } Chunk;
 
 void init_chunk(Chunk *chunk);
-void write_chunk(Chunk *chunk, uint8_t byte);
+void write_chunk(Chunk *chunk, uint8_t byte, int line);
+int add_constant(Chunk *chunk, Value val);
 void free_chunk(Chunk *chunk);
 
 #endif // !clox_chunk_h
