@@ -1,5 +1,6 @@
 #include "vm.h"
 #include "chunk.h"
+#include "compiler.h"
 #include "debug.h"
 #include "value.h"
 #include <stdio.h>
@@ -10,8 +11,15 @@ void init_vm(VM *vm) { reset_stack(vm); }
 
 void free_vm(VM *vm) {}
 
-static inline Value read_constant(VM *vm) {
-  return vm->chunk->constants.values[*(vm->ip++)];
+static inline Value read_constant(VM *vm, bool is_long) {
+  if (!is_long)
+    return vm->chunk->constants.values[*(vm->ip++)];
+  int index = *(vm->ip++);
+  index <<= 8;
+  index += *(vm->ip++);
+  index <<= 8;
+  index += *(vm->ip++);
+  return vm->chunk->constants.values[index];
 }
 
 static inline void binary_operation(VM *vm, char op) {
@@ -48,13 +56,18 @@ static InterpretResult vm_run(VM *vm) {
     disassemble_instruction(vm->chunk, (int)(vm->ip - vm->chunk->code));
 #endif
     uint8_t instruction;
+    Value constant;
     switch (instruction = *(vm->ip++)) {
     case RETURN:
       print_value(vm_pop(vm));
       printf("\n");
       return INTERPRET_OK;
     case CONSTANT:
-      Value constant = read_constant(vm);
+      constant = read_constant(vm, false);
+      vm_push(vm, constant);
+      break;
+    case CONSTANT_LONG:
+      constant = read_constant(vm, true);
       vm_push(vm, constant);
       break;
     case ADD:
@@ -70,16 +83,15 @@ static InterpretResult vm_run(VM *vm) {
       binary_operation(vm, '/');
       break;
     case NEGATE:
-      vm_push(vm, -vm_pop(vm));
+      *(vm->stack_top - 1) = -(*(vm->stack_top - 1));
       break;
     }
   }
 }
 
-InterpretResult vm_interpret(VM *vm, Chunk *chunk) {
-  vm->chunk = chunk;
-  vm->ip = vm->chunk->code;
-  return vm_run(vm);
+InterpretResult vm_interpret(VM *vm, const char *source) {
+  compile(source);
+  return INTERPRET_OK;
 }
 
 void vm_push(VM *vm, Value val) {

@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Project name and language
-project(pl LANGUAGES C)
+project(clox LANGUAGES C)
 
 # Specify the C standard
 set(CMAKE_C_STANDARD 99)
@@ -18,7 +18,7 @@ include_directories(src)
 # Add source files
 file(GLOB_RECURSE SOURCES "src/*.c")
 # Define the executable
-add_executable(pl ${SOURCES})
+add_executable(clox ${SOURCES})
 
 # Link libraries if needed (e.g., pthread, m) target_link_libraries(MyProject
 # pthread m)
