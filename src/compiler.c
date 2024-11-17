@@ -1,5 +1,6 @@
 #include "compiler.h"
 #include "scanner.h"
+#include <stdio.h>
 
 void compile(const char *source) {
   init_scanner(source);
@@ -12,7 +13,7 @@ void compile(const char *source) {
     } else {
       printf("   | ");
     }
-    printf("%2d '%.*s'\n", token.type, token.length, token.current);
+    printf("%2d '%.*s'\n", token.type, token.length, token.start);
 
     if (token.type == TOKEN_EOF)
       break;
