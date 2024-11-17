@@ -11,7 +11,8 @@ int main(int argc, const char *argv[]) {
 
   write_chunk(&chunk, RETURN, 11);
   write_chunk(&chunk, RETURN, 11);
-  write_chunk(&chunk, RETURN, 11);
+  write_constant_long(&chunk, 123.34, 11);
+  write_chunk(&chunk, RETURN, 12);
   write_chunk(&chunk, RETURN, 12);
   write_chunk(&chunk, RETURN, 13);
 

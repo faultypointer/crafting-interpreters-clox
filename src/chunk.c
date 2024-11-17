@@ -34,6 +34,16 @@ void write_chunk(Chunk *chunk, uint8_t byte, int line) {
   chunk->code[chunk->count++] = byte;
 }
 
+void write_constant_long(Chunk *chunk, Value val, int line) {
+  write_valuearray(&chunk->constants, val);
+  int index = chunk->constants.count - 1;
+  write_chunk(chunk, CONSTANT_LONG, line);
+  // 24 bit operands
+  write_chunk(chunk, (index & 0xff0000) >> 16, line);
+  write_chunk(chunk, (index & 0x00ff00) >> 8, line);
+  write_chunk(chunk, index & 0x0000ff, line);
+}
+
 int add_constant(Chunk *chunk, Value val) {
   write_valuearray(&chunk->constants, val);
   return chunk->constants.count - 1;

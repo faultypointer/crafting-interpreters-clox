@@ -8,6 +8,7 @@
 typedef enum {
   RETURN,
   CONSTANT,
+  CONSTANT_LONG,
 } OpCode;
 
 typedef struct {
@@ -22,6 +23,7 @@ typedef struct {
 
 void init_chunk(Chunk *chunk);
 void write_chunk(Chunk *chunk, uint8_t byte, int line);
+void write_constant_long(Chunk *chunk, Value val, int line);
 int add_constant(Chunk *chunk, Value val);
 void free_chunk(Chunk *chunk);
 int get_line(Chunk *chunk, int instruction_offset);
