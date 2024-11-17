@@ -6,9 +6,17 @@
 #include "value.h"
 
 typedef enum {
-  RETURN,
   CONSTANT,
   CONSTANT_LONG,
+
+  ADD,
+  SUB,
+  MUL,
+  DIV,
+
+  NEGATE,
+
+  RETURN,
 } OpCode;
 
 typedef struct {
