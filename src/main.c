@@ -12,7 +12,7 @@ static void repl(VM *vm) {
       printf("\n");
       break;
     }
-    // vm_interpret(vm, line);
+    vm_interpret(vm, line);
   }
 }
 

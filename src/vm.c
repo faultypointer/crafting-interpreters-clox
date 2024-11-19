@@ -77,7 +77,7 @@ static InterpretResult vm_run(VM *vm) {
       binary_operation(vm, '-');
       break;
     case MUL:
-      binary_operation(vm, '-');
+      binary_operation(vm, '*');
       break;
     case DIV:
       binary_operation(vm, '/');
@@ -90,8 +90,21 @@ static InterpretResult vm_run(VM *vm) {
 }
 
 InterpretResult vm_interpret(VM *vm, const char *source) {
-  compile(source);
-  return INTERPRET_OK;
+  Chunk chunk;
+  init_chunk(&chunk);
+
+  if (!compile(source, &chunk)) {
+    free_chunk(&chunk);
+    return INTERPRET_COMPILE_ERROR;
+  }
+
+  vm->chunk = &chunk;
+  vm->ip = vm->chunk->code;
+
+  InterpretResult res = vm_run(vm);
+
+  free_chunk(&chunk);
+  return res;
 }
 
 void vm_push(VM *vm, Value val) {
