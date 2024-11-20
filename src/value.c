@@ -22,4 +22,4 @@ void free_valuearray(ValueArray *arr) {
   init_valuearray(arr);
 }
 
-void print_value(Value val) { printf("%g", val); }
+void print_value(Value val) { printf("%g", AS_NUMBER(val)); }
