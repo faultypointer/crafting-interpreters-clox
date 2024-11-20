@@ -57,6 +57,18 @@ int disassemble_instruction(Chunk *chunk, int offset) {
     return constant_instruction("CONSTANT", chunk, offset);
   case CONSTANT_LONG:
     return constant_long_instruction("CONSTANT_LONG", chunk, offset);
+  case NIL:
+    return simple_instruction("NIL", offset);
+  case TRUE:
+    return simple_instruction("TRUE", offset);
+  case FALSE:
+    return simple_instruction("FALSE", offset);
+  case GREATER:
+    return simple_instruction("GREATER", offset);
+  case LESS:
+    return simple_instruction("LESS", offset);
+  case EQUAL:
+    return simple_instruction("EQUAL", offset);
   case ADD:
     return simple_instruction("ADD", offset);
   case SUB:
@@ -65,6 +77,8 @@ int disassemble_instruction(Chunk *chunk, int offset) {
     return simple_instruction("MUL", offset);
   case DIV:
     return simple_instruction("DIV", offset);
+  case NOT:
+    return simple_instruction("NOT", offset);
   case NEGATE:
     return simple_instruction("NEGATE", offset);
   default:

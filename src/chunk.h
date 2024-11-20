@@ -9,11 +9,20 @@ typedef enum {
   CONSTANT,
   CONSTANT_LONG,
 
+  NIL,
+  TRUE,
+  FALSE,
+
+  EQUAL,
+  GREATER,
+  LESS,
+
   ADD,
   SUB,
   MUL,
   DIV,
 
+  NOT,
   NEGATE,
 
   RETURN,

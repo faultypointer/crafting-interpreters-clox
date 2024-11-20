@@ -27,6 +27,10 @@ void free_vm(VM *vm) {}
 
 static Value peek(VM *vm, int distance) { return vm->stack_top[-1 - distance]; }
 
+static bool is_falsey(Value value) {
+  return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
 static inline Value read_constant(VM *vm, bool is_long) {
   if (!is_long)
     return vm->chunk->constants.values[*(vm->ip++)];
@@ -59,6 +63,12 @@ static inline InterpretResult binary_operation(VM *vm, char op) {
     break;
   case '/':
     vm_push(vm, NUMBER_VAL(a / b));
+    break;
+  case '>':
+    vm_push(vm, BOOL_VAL(a > b));
+    break;
+  case '<':
+    vm_push(vm, BOOL_VAL(a < b));
     break;
   default:
     runtime_error(vm, "unknown binary operator %c\n", op);
@@ -94,6 +104,26 @@ static InterpretResult vm_run(VM *vm) {
       constant = read_constant(vm, true);
       vm_push(vm, constant);
       break;
+    case NIL:
+      vm_push(vm, NIL_VAL);
+      break;
+    case TRUE:
+      vm_push(vm, BOOL_VAL(true));
+      break;
+    case FALSE:
+      vm_push(vm, BOOL_VAL(false));
+      break;
+    case EQUAL:
+      Value b = vm_pop(vm);
+      Value a = vm_pop(vm);
+      vm_push(vm, BOOL_VAL(values_equal(a, b)));
+      break;
+    case GREATER:
+      binary_operation(vm, '>');
+      break;
+    case LESS:
+      binary_operation(vm, '<');
+      break;
     case ADD:
       binary_operation(vm, '+');
       break;
@@ -107,6 +137,9 @@ static InterpretResult vm_run(VM *vm) {
       if (binary_operation(vm, '/') == INTERPRET_RUNTIME_ERROR) {
         return INTERPRET_RUNTIME_ERROR;
       }
+      break;
+    case NOT:
+      vm_push(vm, BOOL_VAL(is_falsey(vm_pop(vm))));
       break;
     case NEGATE:
       constant = peek(vm, 0);

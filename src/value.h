@@ -39,5 +39,6 @@ void write_valuearray(ValueArray *arr, Value val);
 void free_valuearray(ValueArray *arr);
 
 void print_value(Value val);
+bool values_equal(Value a, Value b);
 
 #endif // !clox_value_h
