@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void repl(VM *vm) {
+static void repl() {
   char line[1024];
   for (;;) {
     printf("> ");
@@ -12,7 +12,7 @@ static void repl(VM *vm) {
       printf("\n");
       break;
     }
-    vm_interpret(vm, line);
+    vm_interpret(line);
   }
 }
 
@@ -43,9 +43,9 @@ static char *read_file(const char *path) {
   return buffer;
 }
 
-static void run_file(VM *vm, const char *path) {
+static void run_file(const char *path) {
   char *source = read_file(path);
-  InterpretResult result = vm_interpret(vm, source);
+  InterpretResult result = vm_interpret(source);
   free(source);
   if (result == INTERPRET_COMPILE_ERROR)
     exit(65);
@@ -54,12 +54,11 @@ static void run_file(VM *vm, const char *path) {
 }
 
 int main(int argc, const char *argv[]) {
-  VM vm;
-  init_vm(&vm);
+  init_vm();
   if (argc == 1) {
-    repl(&vm);
+    repl();
   } else if (argc == 2) {
-    run_file(&vm, argv[1]);
+    run_file(argv[1]);
   } else {
     fprintf(stderr, "Usage: clox [filepath]\n");
     exit(64);

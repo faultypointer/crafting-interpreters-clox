@@ -9,45 +9,50 @@
 #include <stdio.h>
 #include <string.h>
 
-static void reset_stack(VM *vm) { vm->stack_top = vm->stack; }
+VM vm;
 
-static void runtime_error(VM *vm, const char *format, ...) {
+static void reset_stack() { vm.stack_top = vm.stack; }
+
+static void runtime_error(const char *format, ...) {
   va_list args;
   va_start(args, format);
   vfprintf(stderr, format, args);
   va_end(args);
   fputs("\n", stderr);
 
-  size_t instruction = vm->ip - vm->chunk->code - 1;
-  int line = get_line(vm->chunk, instruction);
+  size_t instruction = vm.ip - vm.chunk->code - 1;
+  int line = get_line(vm.chunk, instruction);
   fprintf(stderr, "[line %d] in script\n", line);
-  reset_stack(vm);
+  reset_stack();
 }
 
-void init_vm(VM *vm) { reset_stack(vm); }
+void init_vm() {
+  reset_stack();
+  vm.objects = NULL;
+}
 
-void free_vm(VM *vm) {}
+void free_vm() { free_objects(); }
 
-static Value peek(VM *vm, int distance) { return vm->stack_top[-1 - distance]; }
+static Value peek(int distance) { return vm.stack_top[-1 - distance]; }
 
 static bool is_falsey(Value value) {
   return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
-static inline Value read_constant(VM *vm, bool is_long) {
+static inline Value read_constant(bool is_long) {
   if (!is_long)
-    return vm->chunk->constants.values[*(vm->ip++)];
-  int index = *(vm->ip++);
+    return vm.chunk->constants.values[*(vm.ip++)];
+  int index = *(vm.ip++);
   index <<= 8;
-  index += *(vm->ip++);
+  index += *(vm.ip++);
   index <<= 8;
-  index += *(vm->ip++);
-  return vm->chunk->constants.values[index];
+  index += *(vm.ip++);
+  return vm.chunk->constants.values[index];
 }
 
-static inline InterpretResult concatenate_strings(VM *vm) {
-  ObjString *b = AS_STRING(vm_pop(vm));
-  ObjString *a = AS_STRING(vm_pop(vm));
+static inline InterpretResult concatenate_strings() {
+  ObjString *b = AS_STRING(vm_pop());
+  ObjString *a = AS_STRING(vm_pop());
 
   int length = a->length + b->length;
   char *chars = ALLOCATE(char, length + 1);
@@ -55,135 +60,135 @@ static inline InterpretResult concatenate_strings(VM *vm) {
   memcpy(chars + a->length, b->chars, b->length);
   chars[length] = '\0';
   ObjString *result = take_string(chars, length);
-  vm_push(vm, OBJ_VAL(result));
+  vm_push(OBJ_VAL(result));
 }
 
-static inline InterpretResult binary_operation(VM *vm, char op) {
-  Value v_b = vm_pop(vm);
-  Value v_a = vm_pop(vm);
+static inline InterpretResult binary_operation(char op) {
+  Value v_b = vm_pop();
+  Value v_a = vm_pop();
   if (!IS_NUMBER(v_b) || !IS_NUMBER(v_a)) {
-    runtime_error(vm, "Operands must be numbers.");
+    runtime_error("Operands must be numbers.");
     return INTERPRET_RUNTIME_ERROR;
   }
   double a = AS_NUMBER(v_a);
   double b = AS_NUMBER(v_b);
   switch (op) {
   case '+':
-    vm_push(vm, NUMBER_VAL(a + b));
+    vm_push(NUMBER_VAL(a + b));
     break;
   case '-':
-    vm_push(vm, NUMBER_VAL(a - b));
+    vm_push(NUMBER_VAL(a - b));
     break;
   case '*':
-    vm_push(vm, NUMBER_VAL(a * b));
+    vm_push(NUMBER_VAL(a * b));
     break;
   case '/':
-    vm_push(vm, NUMBER_VAL(a / b));
+    vm_push(NUMBER_VAL(a / b));
     break;
   case '>':
-    vm_push(vm, BOOL_VAL(a > b));
+    vm_push(BOOL_VAL(a > b));
     break;
   case '<':
-    vm_push(vm, BOOL_VAL(a < b));
+    vm_push(BOOL_VAL(a < b));
     break;
   default:
-    runtime_error(vm, "unknown binary operator %c\n", op);
+    runtime_error("unknown binary operator %c\n", op);
     return INTERPRET_RUNTIME_ERROR;
   }
   return INTERPRET_OK;
 }
 
-static InterpretResult vm_run(VM *vm) {
+static InterpretResult vm_run() {
   for (;;) {
 #ifdef DEBUG_TRACE_EXEC
     printf("    ");
-    for (Value *slot = vm->stack; slot < vm->stack_top; slot++) {
+    for (Value *slot = vm.stack; slot < vm.stack_top; slot++) {
       printf("[ ");
       print_value(*slot);
       printf(" ]");
     }
     printf("\n");
-    disassemble_instruction(vm->chunk, (int)(vm->ip - vm->chunk->code));
+    disassemble_instruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
 #endif
     uint8_t instruction;
     Value constant;
-    switch (instruction = *(vm->ip++)) {
+    switch (instruction = *(vm.ip++)) {
     case RETURN:
-      print_value(vm_pop(vm));
+      print_value(vm_pop());
       printf("\n");
       return INTERPRET_OK;
     case CONSTANT:
-      constant = read_constant(vm, false);
-      vm_push(vm, constant);
+      constant = read_constant(false);
+      vm_push(constant);
       break;
     case CONSTANT_LONG:
-      constant = read_constant(vm, true);
-      vm_push(vm, constant);
+      constant = read_constant(true);
+      vm_push(constant);
       break;
     case NIL:
-      vm_push(vm, NIL_VAL);
+      vm_push(NIL_VAL);
       break;
     case TRUE:
-      vm_push(vm, BOOL_VAL(true));
+      vm_push(BOOL_VAL(true));
       break;
     case FALSE:
-      vm_push(vm, BOOL_VAL(false));
+      vm_push(BOOL_VAL(false));
       break;
     case EQUAL:
-      Value b = vm_pop(vm);
-      Value a = vm_pop(vm);
-      vm_push(vm, BOOL_VAL(values_equal(a, b)));
+      Value b = vm_pop();
+      Value a = vm_pop();
+      vm_push(BOOL_VAL(values_equal(a, b)));
       break;
     case GREATER:
-      if (binary_operation(vm, '>') == INTERPRET_RUNTIME_ERROR) {
+      if (binary_operation('>') == INTERPRET_RUNTIME_ERROR) {
         return INTERPRET_RUNTIME_ERROR;
       }
       break;
     case LESS:
-      if (binary_operation(vm, '<') == INTERPRET_RUNTIME_ERROR) {
+      if (binary_operation('<') == INTERPRET_RUNTIME_ERROR) {
         return INTERPRET_RUNTIME_ERROR;
       }
       break;
     case ADD:
-      if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
-        concatenate_strings(vm);
-      } else if (binary_operation(vm, '+') == INTERPRET_RUNTIME_ERROR) {
+      if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
+        concatenate_strings();
+      } else if (binary_operation('+') == INTERPRET_RUNTIME_ERROR) {
         return INTERPRET_RUNTIME_ERROR;
       }
       break;
     case SUB:
-      if (binary_operation(vm, '-') == INTERPRET_RUNTIME_ERROR) {
+      if (binary_operation('-') == INTERPRET_RUNTIME_ERROR) {
         return INTERPRET_RUNTIME_ERROR;
       }
       break;
     case MUL:
-      if (binary_operation(vm, '*') == INTERPRET_RUNTIME_ERROR) {
+      if (binary_operation('*') == INTERPRET_RUNTIME_ERROR) {
         return INTERPRET_RUNTIME_ERROR;
       }
       break;
     case DIV:
-      if (binary_operation(vm, '/') == INTERPRET_RUNTIME_ERROR) {
+      if (binary_operation('/') == INTERPRET_RUNTIME_ERROR) {
         return INTERPRET_RUNTIME_ERROR;
       }
       break;
     case NOT:
-      vm_push(vm, BOOL_VAL(is_falsey(vm_pop(vm))));
+      vm_push(BOOL_VAL(is_falsey(vm_pop())));
       break;
     case NEGATE:
-      constant = peek(vm, 0);
+      constant = peek(0);
 
       if (!IS_NUMBER(constant)) {
-        runtime_error(vm, "Operand must be a number");
+        runtime_error("Operand must be a number");
         return INTERPRET_RUNTIME_ERROR;
       }
-      vm->stack_top[-1] = NUMBER_VAL(-AS_NUMBER(constant));
+      vm.stack_top[-1] = NUMBER_VAL(-AS_NUMBER(constant));
 
       break;
     }
   }
 }
 
-InterpretResult vm_interpret(VM *vm, const char *source) {
+InterpretResult vm_interpret(const char *source) {
   Chunk chunk;
   init_chunk(&chunk);
 
@@ -192,21 +197,21 @@ InterpretResult vm_interpret(VM *vm, const char *source) {
     return INTERPRET_COMPILE_ERROR;
   }
 
-  vm->chunk = &chunk;
-  vm->ip = vm->chunk->code;
+  vm.chunk = &chunk;
+  vm.ip = vm.chunk->code;
 
-  InterpretResult res = vm_run(vm);
+  InterpretResult res = vm_run();
 
   free_chunk(&chunk);
   return res;
 }
 
-void vm_push(VM *vm, Value val) {
-  *(vm->stack_top) = val;
-  vm->stack_top++;
+void vm_push(Value val) {
+  *(vm.stack_top) = val;
+  vm.stack_top++;
 }
 
-Value vm_pop(VM *vm) {
-  vm->stack_top--;
-  return *vm->stack_top;
+Value vm_pop() {
+  vm.stack_top--;
+  return *vm.stack_top;
 }
