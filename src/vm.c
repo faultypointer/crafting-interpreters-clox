@@ -2,9 +2,12 @@
 #include "chunk.h"
 #include "compiler.h"
 #include "debug.h"
+#include "memory.h"
+#include "object.h"
 #include "value.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 static void reset_stack(VM *vm) { vm->stack_top = vm->stack; }
 
@@ -40,6 +43,19 @@ static inline Value read_constant(VM *vm, bool is_long) {
   index <<= 8;
   index += *(vm->ip++);
   return vm->chunk->constants.values[index];
+}
+
+static inline InterpretResult concatenate_strings(VM *vm) {
+  ObjString *b = AS_STRING(vm_pop(vm));
+  ObjString *a = AS_STRING(vm_pop(vm));
+
+  int length = a->length + b->length;
+  char *chars = ALLOCATE(char, length + 1);
+  memcpy(chars, a->chars, a->length);
+  memcpy(chars + a->length, b->chars, b->length);
+  chars[length] = '\0';
+  ObjString *result = take_string(chars, length);
+  vm_push(vm, OBJ_VAL(result));
 }
 
 static inline InterpretResult binary_operation(VM *vm, char op) {
@@ -119,19 +135,31 @@ static InterpretResult vm_run(VM *vm) {
       vm_push(vm, BOOL_VAL(values_equal(a, b)));
       break;
     case GREATER:
-      binary_operation(vm, '>');
+      if (binary_operation(vm, '>') == INTERPRET_RUNTIME_ERROR) {
+        return INTERPRET_RUNTIME_ERROR;
+      }
       break;
     case LESS:
-      binary_operation(vm, '<');
+      if (binary_operation(vm, '<') == INTERPRET_RUNTIME_ERROR) {
+        return INTERPRET_RUNTIME_ERROR;
+      }
       break;
     case ADD:
-      binary_operation(vm, '+');
+      if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
+        concatenate_strings(vm);
+      } else if (binary_operation(vm, '+') == INTERPRET_RUNTIME_ERROR) {
+        return INTERPRET_RUNTIME_ERROR;
+      }
       break;
     case SUB:
-      binary_operation(vm, '-');
+      if (binary_operation(vm, '-') == INTERPRET_RUNTIME_ERROR) {
+        return INTERPRET_RUNTIME_ERROR;
+      }
       break;
     case MUL:
-      binary_operation(vm, '*');
+      if (binary_operation(vm, '*') == INTERPRET_RUNTIME_ERROR) {
+        return INTERPRET_RUNTIME_ERROR;
+      }
       break;
     case DIV:
       if (binary_operation(vm, '/') == INTERPRET_RUNTIME_ERROR) {
